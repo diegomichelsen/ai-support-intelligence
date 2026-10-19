@@ -1,0 +1,175 @@
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-support-intelligence.local/schemas/conversation.schema.json",
+  "title": "AI Support Intelligence - Conversation",
+  "description": "Contrato v1 para conversas de atendimento importadas de fontes externas ou simuladas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "brand_id",
+    "channel",
+    "status",
+    "created_at",
+    "closed_at",
+    "customer",
+    "assignee",
+    "messages",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brand_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["chat", "email", "whatsapp", "other", "unknown"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed", "pending", "unknown"]
+    },
+    "created_at": {
+      "$ref": "#/$defs/nullableTimestamp"
+    },
+    "closed_at": {
+      "$ref": "#/$defs/nullableTimestamp"
+    },
+    "customer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "email"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": ["string", "null"],
+          "format": "email"
+        }
+      }
+    },
+    "assignee": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": ["string", "null"]
+        },
+        "name": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "metadata_origin",
+        "original_reference"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["csv_import", "api_import", "synthetic"]
+        },
+        "metadata_origin": {
+          "type": "string",
+          "enum": ["original", "synthetic", "mixed"]
+        },
+        "original_reference": {
+          "type": ["string", "null"],
+          "description": "Referência à linha ou identificador da origem, sem expor dados pessoais."
+        },
+        "synthetic_fields": {
+          "type": "array",
+          "description": "Caminhos dos campos preenchidos com valores fictícios.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nullableTimestamp": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sequence",
+        "author_type",
+        "author_id",
+        "body",
+        "created_at",
+        "attachments"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "author_type": {
+          "type": "string",
+          "enum": ["customer", "bot", "human_agent", "system"]
+        },
+        "author_id": {
+          "type": ["string", "null"]
+        },
+        "body": {
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/$defs/nullableTimestamp"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "reference"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["image", "file", "audio", "video", "other"]
+              },
+              "reference": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
