@@ -1,0 +1,18 @@
+[33m60edbe3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Docker
+ .../.gitattributes => .gitattributes               |   0
+ ai-support-intelligence/.gitignore => .gitignore   |   0
+ ai-support-intelligence/LICENSE => LICENSE         |   0
+ ai-support-intelligence/README.md => README.md     |   0
+ ai-support-intelligence/docker-compose.yml         |   0
+ ai-support-intelligence/requirements.txt           |   0
+ ai-support-intelligence/src/api/main.py            |  66 [31m-----------[m
+ .../docs => docs}/data-model.md                    |   0
+ .../importar_conversas.py => importar_conversas.py |   0
+ .../schema => schema}/conversation.schema.json     |   0
+ src/api/.dockerignore                              |  25 [32m+++++[m
+ src/api/Dockerfile                                 |  13 [32m+++[m
+ src/api/docker-compose.yml                         |  28 [32m+++++[m
+ src/api/main.py                                    | 122 [32m+++++++++++++++++++++[m
+ src/api/requirements.txt                           |   4 [32m+[m
+ .../src => src}/testes/test_api.py                 |   0
+ 16 files changed, 192 insertions(+), 66 deletions(-)
