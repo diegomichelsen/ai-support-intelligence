@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monitoria de Atendimento · Customer Service</title>
+<!-- Tipografia: Inter (UI) + JetBrains Mono (números tabulares) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1/dist/apexcharts.min.js"></script>
+<style>
+  :root{--tipbg:#1b2a52;--tiptxt:#e6ecff;--tipcode:#8cc6ff;--insbg:rgba(90,169,255,.12);--warnbg:rgba(255,77,94,.12);--goodbg:rgba(61,220,151,.12);
+    --bg:#060a17; --panel:#0c1326; --panel-2:#101a33; --line:#1b2746; --line-2:#26365e;
+    --txt:#e6ecff; --muted:#8b97b8; --dim:#5b6789;
+    --blue:#5aa9ff; --indigo:#4f6bff; --green:#3ddc97; --pink:#e64fb3; --lime:#c6f432;
+    --orange:#ff8a1f; --red:#ff4d5e; --purple:#8b5cf6;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#0f1d45 0%,transparent 60%),radial-gradient(900px 500px at 110% 10%,#1a0f3d 0%,transparent 55%),var(--bg);
+       color:var(--txt);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  .num{font-variant-numeric:tabular-nums}
+  .panel{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 20px 40px -24px rgba(0,0,0,.8)}
+  .panel-title{font-size:13px;font-weight:700;letter-spacing:.01em;color:#dfe6ff}
+  .panel-sub{font-size:11px;color:var(--dim)}
+  /* KPI cards com faixa de cor no topo, como no PBIX */
+  .kpi{position:relative;overflow:hidden;cursor:default;transition:border-color .25s,transform .25s}
+  .kpi::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent,var(--blue));box-shadow:0 0 18px var(--accent,var(--blue))}
+  .kpi:hover{border-color:var(--line-2);transform:translateY(-2px)}
+  .kpi .val{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .kpi .lbl{font-size:12px;color:var(--muted);font-weight:600;margin-top:6px}
+  .kpi .row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+  .kpi .row b{color:#fff;font-weight:600}
+  .delta-up{color:var(--green)} .delta-down{color:var(--red)}
+  .flash{animation:flash .6s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(90,169,255,.0)}30%{box-shadow:0 0 0 2px rgba(90,169,255,.35)}100%{box-shadow:0 0 0 0 rgba(90,169,255,0)}}
+  /* Filtros */
+  .f-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+  .f-ctrl{width:100%;background:#0a1122;border:1px solid var(--line-2);color:var(--txt);border-radius:8px;padding:7px 10px;font-size:12.5px;outline:none;color-scheme:dark;transition:border-color .2s}
+  .f-ctrl:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(90,169,255,.18)}
+  .f-ctrl.active{border-color:var(--blue);background:#0d1a36}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:#0d1630;color:var(--txt);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+  .btn:hover{border-color:var(--blue);color:#fff}
+  .btn:focus-visible,.rk-row:focus-visible,th:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  /* Tabela ranking */
+  .rk{width:100%;border-collapse:collapse;font-size:12px}
+  .rk th{position:sticky;top:0;background:#0e1730;color:#cfd8f5;font-weight:700;text-align:left;padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+  .rk th.sorted::after{content:" ▾";color:var(--blue)} .rk th.sorted.asc::after{content:" ▴"}
+  .rk td{padding:6px;border-bottom:1px solid rgba(38,54,94,.45);white-space:nowrap}
+  .rk tbody tr{cursor:pointer;transition:background .15s}
+  .rk tbody tr:hover{background:rgba(90,169,255,.07)}
+  .rk tbody tr.sel{background:rgba(90,169,255,.16)}
+  .rk tfoot td{font-weight:800;border-top:1px solid var(--line-2);border-bottom:none;background:#0e1730;position:sticky;bottom:0}
+  .scorebar{position:relative;border-radius:4px;overflow:hidden;background:rgba(90,169,255,.08);padding:2px 6px;text-align:right}
+  .scorebar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#2f7df6,#5aa9ff);opacity:.85;transition:width .6s}
+  .scorebar span{position:relative;font-weight:700}
+  .scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:#2a3a63 transparent}
+  .pill{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line-2);color:var(--muted)}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(90,169,255,.12);color:#cfe3ff;border:1px solid rgba(90,169,255,.35)}
+  .chip button{color:#9fc7ff;cursor:pointer}
+  .apexcharts-tooltip{border:1px solid var(--line-2)!important;box-shadow:0 10px 30px rgba(0,0,0,.6)!important}
+  .apexcharts-tooltip.apexcharts-theme-dark{background:#0d1630!important}
+  .apexcharts-tooltip-title{background:#111d3c!important;border-bottom:1px solid var(--line-2)!important}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(61,220,151,.6);animation:pulse 2s infinite}
+  @keyframes pulse{70%{box-shadow:0 0 0 8px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+  #filters{transition:max-height .35s ease,opacity .25s;overflow:hidden}
+  #filters.closed{max-height:0!important;opacity:0}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ===== Utilitários (substituem o Tailwind CDN — sem dependência nem warning) ===== */
+  .max-w-\[1600px\]{max-width:1600px}.mx-auto{margin-left:auto;margin-right:auto}
+  .px-3{padding-left:.75rem;padding-right:.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}
+  .p-3{padding:.75rem}.p-4{padding:1rem}.mb-2{margin-bottom:.5rem}
+  .space-y-3>*+*{margin-top:.75rem}
+  .flex{display:flex}.grid{display:grid}.flex-wrap{flex-wrap:wrap}.flex-col{flex-direction:column}.flex-1{flex:1 1 0%}
+  .items-center{align-items:center}.justify-between{justify-content:space-between}.justify-end{justify-content:flex-end}.place-items-center{place-items:center}
+  .gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}
+  .w-10{width:2.5rem}.h-10{height:2.5rem}.rounded-xl{border-radius:.75rem}.min-h-\[30px\]{min-height:30px}
+  .text-\[17px\]{font-size:17px}.text-\[12px\]{font-size:12px}.text-\[11px\]{font-size:11px}.text-center{text-align:center}
+  .font-extrabold{font-weight:800}.tracking-tight{letter-spacing:-.025em}.leading-tight{line-height:1.25}
+  .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .col-span-2{grid-column:span 2/span 2}
+  @media(min-width:640px){.sm\:px-5{padding-left:1.25rem;padding-right:1.25rem}.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.sm\:col-span-1{grid-column:span 1/span 1}}
+  @media(min-width:768px){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:col-span-1{grid-column:span 1/span 1}}
+  @media(min-width:1024px){.lg\:grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.lg\:grid-cols-12{grid-template-columns:repeat(12,minmax(0,1fr))}.lg\:col-span-4{grid-column:span 4/span 4}}
+  @media(min-width:1280px){.xl\:grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.xl\:grid-cols-12{grid-template-columns:repeat(12,minmax(0,1fr))}.xl\:col-span-1{grid-column:span 1/span 1}.xl\:col-span-2{grid-column:span 2/span 2}.xl\:col-span-3{grid-column:span 3/span 3}.xl\:col-span-4{grid-column:span 4/span 4}}
+
+  /* Tooltip de definição dos KPIs */
+  .tip{position:relative;display:inline-flex;align-items:center;gap:5px;cursor:help}
+  .tip svg{opacity:.55}
+  .tip:hover svg,.tip:focus svg{opacity:1}
+  .tip .tipbox{position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:230px;padding:10px 12px;border-radius:10px;
+    background:var(--tipbg);color:var(--tiptxt);font-size:11.5px;font-weight:500;line-height:1.45;box-shadow:0 14px 34px -10px rgba(40,20,90,.45);
+    opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .18s,transform .18s}
+  .tip .tipbox code{font-family:inherit;font-weight:700;color:var(--tipcode)}
+  .tip:hover .tipbox,.tip:focus .tipbox{opacity:1;transform:none}
+  .kpi{overflow:visible}
+  .kpi::before{border-radius:14px 14px 0 0}
+  /* Estado vazio */
+  .chart-wrap{position:relative}
+  .empty{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;
+    background:var(--panel);border-radius:10px;font-size:12.5px;color:var(--muted);z-index:5;padding:16px}
+  .empty b{color:var(--txt);font-size:13px}
+  .no-data .empty{display:flex}
+  /* Insights */
+  .ins{display:flex;gap:10px;align-items:flex-start;padding:12px 14px}
+  .ins .ic{flex:0 0 30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--insbg);color:var(--blue)}
+  .ins .t{font-size:12.5px;line-height:1.45;color:var(--txt)}
+  .ins .t b{font-weight:700}
+  .ins .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .ins.warn .ic{background:var(--warnbg);color:var(--red)}
+  .ins.good .ic{background:var(--goodbg);color:var(--green)}
+  .grid-ins{display:grid;gap:.75rem;grid-template-columns:repeat(1,minmax(0,1fr))}
+  @media(min-width:768px){.grid-ins{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(min-width:1280px){.grid-ins{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  /* Mobile: evita scroll horizontal */
+  .panel,.chart-wrap{min-width:0}
+  .scroll{max-width:100%}
+  .tip .tipbox{width:min(230px,72vw);visibility:hidden}
+  .tip:hover .tipbox,.tip:focus .tipbox{visibility:visible}
+  @media(max-width:639px){#kpis>.kpi:nth-child(even) .tipbox{left:auto;right:-40px}}
+  html,body{overflow-x:clip}
+  .apexcharts-bar-area,.apexcharts-treemap-rect,.apexcharts-heatmap-rect,.apexcharts-marker{cursor:pointer}
+</style>
+</head>
+<body>
+<div class="max-w-[1600px] mx-auto px-3 sm:px-5 py-4 space-y-3">
+
+  <!-- ===== Header ===== -->
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl grid place-items-center" style="background:linear-gradient(135deg,#2f7df6,#8b5cf6);box-shadow:0 8px 24px -8px #4f6bff">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>
+      </div>
+      <div>
+        <h1 class="text-[17px] font-extrabold tracking-tight leading-tight">Monitoria de Atendimento</h1>
+        <p class="text-[12px]" style="color:var(--muted)">Customer Service · qualidade, auditoria e conformidade</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="pill flex items-center gap-2"><span class="live-dot"></span>Demo interativa · dados fictícios</span>
+      <span class="pill num" id="lastUpdate"></span>
+      <button class="btn" id="btnReset" title="Limpar todos os filtros">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Limpar filtros
+      </button>
+      <button class="btn" id="btnToggle" aria-expanded="true" title="Mostrar/ocultar filtros">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Filtros
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Filtros ===== -->
+  <section id="filters" class="panel p-3" style="max-height:300px">
+    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+      <div class="col-span-2 md:col-span-1 xl:col-span-1">
+        <label class="f-label">Período</label>
+        <div class="flex gap-1">
+          <select id="fFrom" class="f-ctrl num" aria-label="Mês inicial"></select>
+          <select id="fTo" class="f-ctrl num" aria-label="Mês final"></select>
+        </div>
+      </div>
+      <div><label class="f-label" for="fBrand">Marca</label><select id="fBrand" class="f-ctrl"></select></div>
+      <div><label class="f-label" for="fChannel">Canal de atendimento</label><select id="fChannel" class="f-ctrl"></select></div>
+      <div><label class="f-label" for="fAnalyst">Analista</label><select id="fAnalyst" class="f-ctrl"></select></div>
+      <div><label class="f-label" for="fFunc">Função</label><select id="fFunc" class="f-ctrl"></select></div>
+      <div><label class="f-label" for="fShift">Turno</label><select id="fShift" class="f-ctrl"></select></div>
+      <select id="fPillar" hidden></select><select id="fSev" hidden></select>
+      <div class="flex flex-col justify-end">
+        <div id="chips" class="flex flex-wrap gap-1 min-h-[30px] items-center text-[11px]" style="color:var(--dim)"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== KPIs ===== -->
+  <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3" id="kpis">
+    <div class="panel kpi p-4" style="--accent:var(--blue)">
+      <div class="val num" id="kConv">–</div><div class="lbl"><span class="tip" tabindex="0">Conversas<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox">Total de atendimentos no período. <code>Humano</code> = conversas tratadas por analista (sem bot).</span></span></div>
+      <div class="row"><span>P.A.</span><b id="kConvPA">–</b></div>
+      <div class="row"><span>Humano</span><b class="num" id="kHum">–</b></div>
+    </div>
+    <div class="panel kpi p-4" style="--accent:var(--green)">
+      <div class="val num" id="kCvr">–</div><div class="lbl"><span class="tip" tabindex="0">Conversão<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox"><code>Conversões ÷ Conversas</code>. Mede o atendimento que gerou venda ou retenção.</span></span></div>
+      <div class="row"><span>P.A.</span><b id="kCvrPA">–</b></div>
+      <div class="row"><span>Avaliações</span><b class="num" id="kAval">–</b></div>
+    </div>
+    <div class="panel kpi p-4" style="--accent:var(--green)">
+      <div class="val num" id="kCsat">–</div><div class="lbl"><span class="tip" tabindex="0">CSAT %<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox"><code>Avaliações positivas ÷ Avaliações</code>. Feedback = avaliações com comentário justificado.</span></span></div>
+      <div class="row"><span>P.A.</span><b id="kCsatPA">–</b></div>
+      <div class="row"><span>Feedback</span><b class="num" id="kFb">–</b></div>
+    </div>
+    <div class="panel kpi p-4" style="--accent:var(--blue)">
+      <div class="val num" id="kInf">–</div><div class="lbl"><span class="tip" tabindex="0">Infrações<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox">Desvios ao guia de qualidade encontrados nas auditorias, classificados por gravidade.</span></span></div>
+      <div class="row"><span>Graves</span><b class="num" id="kGrave">–</b></div>
+      <div class="row"><span>Gravíssimas</span><b class="num" id="kMGrave">–</b></div>
+    </div>
+    <div class="panel kpi p-4" style="--accent:var(--green)">
+      <div class="val num" id="kScore">–</div><div class="lbl"><span class="tip" tabindex="0">Score de qualidade<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox"><code>100 − (Σ infrações × peso ÷ auditorias) × 23</code>. Pesos: Baixa 0,5 · Média 1 · Grave 3 · Gravíssima 6.</span></span></div>
+      <div class="row"><span>P.A.</span><b id="kScorePA">–</b></div>
+      <div class="row"><span>Meta</span><b class="num">90.0</b></div>
+    </div>
+    <div class="panel kpi p-4" style="--accent:var(--purple)">
+      <div class="val num" id="kRev">–</div><div class="lbl"><span class="tip" tabindex="0">Revisões<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox">Auditorias contestadas pelo analista. Procedentes = contestações aceites e revertidas.</span></span></div>
+      <div class="row"><span>Contestações</span><b class="num" id="kRevPct">–</b></div>
+      <div class="row"><span>Procedentes</span><b class="num" id="kRevOk">–</b></div>
+    </div>
+    <div class="panel kpi p-4 col-span-2 sm:col-span-1" style="--accent:var(--blue)">
+      <div class="val num" id="kAud">–</div><div class="lbl"><span class="tip" tabindex="0">Auditorias<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg><span class="tipbox">Conversas auditadas. <code>Cobertura = Auditorias ÷ Conversas</code>.</span></span></div>
+      <div class="row"><span>P.A.</span><b id="kAudPA">–</b></div>
+      <div class="row"><span>Cobertura</span><b class="num" id="kCov">–</b></div>
+    </div>
+  </section>
+
+  <!-- ===== Insights automáticos ===== -->
+  <section class="grid-ins" id="insights" aria-live="polite"></section>
+
+  <!-- ===== Linha 2 ===== -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+    <div class="panel p-3 lg:col-span-4 flex flex-col" style="min-height:340px">
+      <div class="flex items-center justify-between mb-2">
+        <div><div class="panel-title">Ranking de analistas</div><div class="panel-sub">Clique numa linha para filtrar · clique no cabeçalho para ordenar</div></div>
+      </div>
+      <div class="chart-wrap flex-1"><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div><div class="scroll" style="max-height:290px">
+        <table class="rk num">
+          <thead><tr>
+            <th data-k="name" tabindex="0">Nome</th>
+            <th data-k="cov" tabindex="0" class="sorted">Cobertura</th>
+            <th data-k="csat" tabindex="0">CSAT</th>
+            <th data-k="inf" tabindex="0">Infrações</th>
+            <th data-k="score" tabindex="0" style="min-width:86px">Score</th>
+          </tr></thead>
+          <tbody id="rkBody"></tbody>
+          <tfoot><tr id="rkFoot"></tr></tfoot>
+        </table>
+      </div></div>
+    </div>
+    <div class="panel p-3 lg:col-span-4">
+      <div class="flex items-center justify-between"><div><div class="panel-title">CSAT justificado vs volume</div><div class="panel-sub">Cada ponto é um analista · linha tracejada = média · clique para filtrar</div></div></div>
+      <div class="chart-wrap"><div id="chScatter"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+    <div class="panel p-3 lg:col-span-4">
+      <div><div class="panel-title">Ranking de infrações</div><div class="panel-sub">Clique num pilar para filtrar todo o painel</div></div>
+      <div class="chart-wrap"><div id="chRankInf"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+  </section>
+
+  <!-- ===== Linha 3 ===== -->
+  <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+    <div class="panel p-3 xl:col-span-4">
+      <div><div class="panel-title">Evolução CSAT</div><div class="panel-sub">Clique numa coluna para isolar o mês</div></div>
+      <div class="chart-wrap"><div id="chEvol"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+    <div class="panel p-3 xl:col-span-3">
+      <div><div class="panel-title">Infrações por função e gravidade</div><div class="panel-sub">Clique num segmento: filtra função e gravidade</div></div>
+      <div class="chart-wrap"><div id="chFunc"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+    <div class="panel p-3 xl:col-span-2">
+      <div><div class="panel-title">Infrações por turno</div><div class="panel-sub">Clique para filtrar</div></div>
+      <div class="chart-wrap"><div id="chTurno"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+    <div class="panel p-3 xl:col-span-3">
+      <div><div class="panel-title">Score por marca e pilar</div><div class="panel-sub">Clique numa célula: filtra marca e pilar</div></div>
+      <div class="chart-wrap"><div id="chHeat"></div><div class="empty"><b>Sem dados para esta combinação</b>Remova um filtro para voltar a ver resultados.<button class="btn" onclick="document.getElementById('btnReset').click()">Limpar filtros</button></div></div>
+    </div>
+  </section>
+
+  <footer class="text-center text-[11px] py-2" style="color:var(--dim)">
+    Recriação em HTML de um dashboard Power BI · todos os nomes, marcas e valores são fictícios e gerados por seed determinística.
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   1) MOCK DE DADOS — gerador determinístico (seed fixa)
+   Granularidade (fato): analista × mês × marca × canal  (~2.000 linhas)
+   ===================================================================== */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd = mulberry32(20260930);
+const R = (a,b)=>a+(b-a)*rnd();
+
+const MONTHS   = ['jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'];
+const BRANDS   = [{n:'Brand Alpha',w:1.3},{n:'Brand Beta',w:1.0},{n:'Brand Gamma',w:.8},{n:'Brand Delta',w:.55}];
+const CHANNELS = [{n:'Chat',w:1.2},{n:'WhatsApp',w:1.4},{n:'E-mail',w:.6},{n:'Voz',w:.8}];
+const FUNCS    = ['N1','N2','N3'];
+const SHIFTS   = ['Diurno','Intermediário','Noturno','Indefinido'];
+const PILLARS  = ['Escuta Ativa','Resolutividade','Termos a Evitar','Prazos','Proatividade','Empatia','Procedimentos'];
+const PILLAR_W = [.21,.17,.165,.10,.09,.05,.05].map((w,_,a)=>w/a.reduce((x,y)=>x+y)); // normalizado p/ somar 1
+const SEV      = ['Baixa','Média','Grave','Gravíssima'];
+const SEV_W    = [.13,.58,.25,.04];
+const SEV_PEN  = [0.5,1,3,6];                 // peso de penalização no score
+const SEASON   = [.85,1.05,1.45,1.0,.78,.66,.6,.52,.42]; // sazonalidade do volume (como no print)
+const COVM     = [.02,.03,.03,.02,.02,.06,.95,.80,.55];  // cobertura de auditoria por mês
+
+// Analistas fictícios: [nome, função, turno, qualidade(0-1), fator volume, fator cobertura]
+const ANALYSTS = [
+ ['Mariana Silva','N1','Diurno',.86,1.15,1.0],['Gabriel M.','N1','Diurno',.70,1.25,.9],
+ ['Lucas Andrade','N2','Intermediário',.82,.95,1.1],['Ana Beatriz','N1','Noturno',.78,.8,1.0],
+ ['Rafael Costa','N2','Diurno',.88,1.1,.95],['Juliana Prado','N1','Intermediário',.64,.55,1.2],
+ ['Thiago Nunes','N2','Noturno',.80,.85,1.0],['Camila Rocha','N3','Diurno',.90,.5,1.3],
+ ['Analista 01','N1','Indefinido',.74,.7,.8],['Pedro Henrique','N2','Diurno',.84,1.0,1.0],
+ ['Larissa Teles','N1','Noturno',.68,.75,1.05],['Bruno Vieira','N3','Intermediário',.87,.45,1.25],
+ ['Fernanda Lima','N2','Indefinido',.76,.65,.9],['Analista 02','N1','Diurno',.72,.9,1.0]
+];
+
+function multinomial(n,w){const out=w.map(()=>0);for(let i=0;i<n;i++){let r=rnd(),acc=0;for(let j=0;j<w.length;j++){acc+=w[j];if(r<=acc||j===w.length-1){out[j]++;break}}}return out}
+
+const DATA=[];
+ANALYSTS.forEach(([name,fn,sh,q,vf,cf],ai)=>{
+  MONTHS.forEach((_,m)=>{
+    BRANDS.forEach((b,bi)=>{
+      CHANNELS.forEach((c,ci)=>{
+        const conv = Math.round(vf*b.w*c.w*SEASON[m]*21*R(.7,1.3));
+        const aval = Math.round(conv*R(.07,.10));
+        const qb   = Math.min(.97,Math.max(.3,q - .1 + (bi===3?-.06:0) + R(-.08,.08)));   // Delta pior em qualidade
+        const aud  = Math.round(conv*COVM[m]*cf*R(.85,1.15)*0.9);
+        const inf  = Math.round(aud*(1-q)*R(.6,1.1)*0.85);
+        DATA.push({
+          a:ai,m,b:bi,c:ci,fn,sh,
+          conv, hum:Math.round(conv*R(.72,.82)), cvs:Math.round(conv*R(.08,.125)),
+          aval, pos:Math.round(aval*qb), fb:Math.round(aval*R(.25,.32)),
+          aud, rev:Math.round(aud*R(0,.04)), revOk:0,
+          inf, cat:multinomial(inf,PILLAR_W), sev:multinomial(inf,SEV_W)
+        });
+        const last=DATA[DATA.length-1]; last.revOk=Math.round(last.rev*R(.2,.5));
+      });
+    });
+  });
+});
+
+/* =====================================================================
+   2) ESTADO DOS FILTROS + MOTOR DE AGREGAÇÃO (equivalente às medidas DAX)
+   ===================================================================== */
+const F={from:0,to:8,brand:'all',channel:'all',analyst:'all',func:'all',shift:'all',pillar:'all',sev:'all'};
+let sortKey='cov', sortAsc=false;
+
+// ex = dimensão a ignorar → o visual que originou o clique mantém as outras categorias (esmaecidas), como no Power BI
+const passDims = (r,ex) =>
+  (ex==='brand'||F.brand==='all'||r.b==F.brand)&&(ex==='channel'||F.channel==='all'||r.c==F.channel)&&
+  (ex==='analyst'||F.analyst==='all'||r.a==F.analyst)&&(ex==='func'||F.func==='all'||r.fn===F.func)&&(ex==='shift'||F.shift==='all'||r.sh===F.shift);
+const filtered = (from=F.from,to=F.to) => DATA.filter(r=>r.m>=from&&r.m<=to&&passDims(r));
+const filteredEx = ex => DATA.filter(r=>(ex==='period'||(r.m>=F.from&&r.m<=F.to))&&passDims(r,ex));
+const dim = (c,on) => on? c : c+'38';   // cor esmaecida (alpha ~22%)
+
+function agg(rows,ex){
+  const s={conv:0,hum:0,cvs:0,aval:0,pos:0,fb:0,aud:0,rev:0,revOk:0,inf:0,cat:PILLARS.map(()=>0),sev:SEV.map(()=>0)};
+  for(const r of rows){for(const k of ['conv','hum','cvs','aval','pos','fb','aud','rev','revOk','inf'])s[k]+=r[k];
+    r.cat.forEach((v,i)=>s.cat[i]+=v); r.sev.forEach((v,i)=>s.sev[i]+=v);}
+  // Filtros de pilar/gravidade atuam só nas métricas de infração (pilar e gravidade tratados como independentes)
+  const uP = F.pillar!=='all'&&ex!=='pillar', uS = F.sev!=='all'&&ex!=='sev';
+  if((uP||uS)&&s.inf){const i0=s.inf, fc=uP?s.cat[+F.pillar]/i0:1, fs=uS?s.sev[+F.sev]/i0:1;
+    s.inf=Math.round(i0*fc*fs);
+    s.cat=s.cat.map((c,i)=>uP&&i!=F.pillar?0:Math.round(c*fs));
+    s.sev=s.sev.map((x,i)=>uS&&i!=F.sev?0:Math.round(x*fc));}
+  s.csat = s.aval? s.pos/s.aval*100 : null;                  // CSAT % = DIVIDE([Positivas],[Avaliações])
+  s.cvr  = s.conv? s.cvs/s.conv*100 : null;
+  s.cov  = s.conv? s.aud/s.conv*100 : null;                  // Cobertura = Auditorias / Conversas
+  const pen = s.sev.reduce((a,v,i)=>a+v*SEV_PEN[i],0);
+  s.score = s.aud? Math.max(0,Math.min(100,100 - pen/s.aud*23)) : null; // Score ponderado por gravidade
+  return s;
+}
+const groupBy=(rows,key)=>{const g={};rows.forEach(r=>{(g[r[key]]??=[]).push(r)});return g};
+
+/* ===== Formatação ===== */
+const fmtK = v => v==null?'--': v>=1000 ? (v/1000).toFixed(v>=10000?0:1).replace('.0','')+' Mil' : Math.round(v).toLocaleString('pt-PT');
+const fmtP = (v,d=1)=> v==null?'--': v.toFixed(d)+'%';
+const fmtN = v => v==null?'--': Math.round(v).toLocaleString('pt-PT');
+
+function animate(el,to,fmt){
+  cancelAnimationFrame(el._raf);                       // cancela animação anterior (evita valor "fantasma")
+  if(to==null){el.textContent='--';el.dataset.v=0;return}
+  const from = parseFloat(el.dataset.v||0), t0=performance.now(), dur=650;
+  el.dataset.v=to;
+  const step=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=fmt(from+(to-from)*e);if(p<1)el._raf=requestAnimationFrame(step)};
+  el._raf=requestAnimationFrame(step);
+}
+function delta(el,cur,prev,isPct){
+  if(cur==null||prev==null||prev===0){el.textContent='--';el.className='';return}
+  const d = isPct? cur-prev : (cur-prev)/prev*100;
+  el.className = d>=0?'delta-up':'delta-down';
+  el.textContent = (d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(1)+(isPct?' p.p.':'%');
+}
+
+/* =====================================================================
+   3) GRÁFICOS (ApexCharts) — tema base
+   ===================================================================== */
+const C={blue:'#5aa9ff',indigo:'#4f6bff',green:'#3ddc97',pink:'#e64fb3',lime:'#c6f432',orange:'#ff8a1f',red:'#ff4d5e',purple:'#8b5cf6',grid:'#1b2746',txt:'#8b97b8'};
+const base = h => ({
+  chart:{height:h,background:'transparent',foreColor:C.txt,fontFamily:'Inter',toolbar:{show:false},
+         animations:{enabled:true,easing:'easeinout',speed:650,dynamicAnimation:{enabled:true,speed:550}}},
+  theme:{mode:'dark'}, grid:{borderColor:C.grid,strokeDashArray:3}, tooltip:{theme:'dark'},
+  states:{active:{filter:{type:'none'}},hover:{filter:{type:'lighten',value:.06}}},
+  dataLabels:{enabled:false}, legend:{labels:{colors:'#cfd8f5'}}
+});
+
+// Dispersão
+const chScatter = new ApexCharts(document.querySelector('#chScatter'),{...base(285),
+  chart:{...base(285).chart,type:'scatter',zoom:{enabled:false},
+    events:{dataPointSelection:(e,ctx,{seriesIndex,dataPointIndex,w})=>{const p=w.config.series[seriesIndex].data[dataPointIndex];setFilter('analyst',p.id==F.analyst?'all':p.id)}}},
+  series:[],colors:[C.blue,C.red],markers:{size:8,strokeWidth:0,hover:{size:11}},
+  xaxis:{type:'numeric',min:0,tickAmount:5,labels:{formatter:v=>fmtK(v)},title:{text:'Volume de conversas',style:{color:C.txt,fontWeight:500}}},
+  yaxis:{min:40,max:100,tickAmount:3,labels:{formatter:v=>v.toFixed(0)+'%'}},
+  dataLabels:{enabled:true,offsetY:-9,style:{fontSize:'10px',fontWeight:500,colors:['#9fb0d8']},background:{enabled:false},
+    formatter:(v,{seriesIndex,dataPointIndex,w})=>w.config.series[seriesIndex].data[dataPointIndex].short},
+  tooltip:{theme:'dark',custom:({seriesIndex,dataPointIndex,w})=>{const p=w.config.series[seriesIndex].data[dataPointIndex];
+    return `<div style="padding:8px 10px;font-size:12px"><b>${p.name}</b><br>Volume: ${fmtN(p.x)}<br>CSAT: ${p.y.toFixed(1)}%</div>`}},
+  legend:{position:'top',horizontalAlign:'right',labels:{colors:'#cfd8f5'}}
+}); chScatter.render();
+
+// Ranking infrações
+const chRankInf = new ApexCharts(document.querySelector('#chRankInf'),{...base(300),
+  chart:{...base(300).chart,type:'bar',
+    events:{dataPointSelection:(e,ctx,{dataPointIndex,w})=>{const p=String(PILLARS.indexOf(w.config.xaxis.categories[dataPointIndex]));setFilter('pillar',F.pillar===p?'all':p)}}},
+  series:[{name:'Infrações',data:[]}],
+  plotOptions:{bar:{horizontal:true,barHeight:'68%',borderRadius:3,dataLabels:{position:'top'}}},
+  colors:[C.blue],fill:{opacity:1},
+  dataLabels:{enabled:true,offsetX:22,style:{fontSize:'11px',colors:['#e6ecff']}},
+  xaxis:{categories:[],labels:{formatter:v=>fmtN(v)}}, yaxis:{labels:{style:{colors:'#cfd8f5',fontSize:'11.5px'},maxWidth:130}}
+}); chRankInf.render();
+
+// Evolução CSAT (combo)
+const chEvol = new ApexCharts(document.querySelector('#chEvol'),{...base(270),
+  chart:{...base(270).chart,type:'line',
+    events:{dataPointSelection:(e,ctx,{dataPointIndex:m})=>{
+      if(F.from===m&&F.to===m){F.from=F._pf??0;F.to=F._pt??8}else{if(F.from!==F.to||F.from!==m){F._pf=F.from;F._pt=F.to}F.from=F.to=m}
+      $('fFrom').value=F.from;$('fTo').value=F.to;setTimeout(render,30)}}},
+  series:[{name:'Conversas',type:'column',data:[]},{name:'CSAT %',type:'line',data:[]},{name:'Cobertura auditoria',type:'line',data:[]}],
+  colors:[({dataPointIndex:m,seriesIndex})=>dim(C.blue,m==null||(m>=F.from&&m<=F.to)),C.pink,C.lime],stroke:{width:[0,3,3],curve:'smooth'},
+  plotOptions:{bar:{columnWidth:'62%',borderRadius:3}},fill:{opacity:[.85,1,1]},markers:{size:[0,3,3],strokeWidth:0},
+  xaxis:{categories:MONTHS},
+  yaxis:[{seriesName:'Conversas',labels:{formatter:v=>fmtK(v)}},
+         {seriesName:'CSAT %',opposite:true,min:0,max:100,tickAmount:4,labels:{formatter:v=>v.toFixed(0)+'%'}},
+         {seriesName:'CSAT %',show:false,min:0,max:100}],
+  tooltip:{theme:'dark',shared:false,intersect:true,y:{formatter:(v,{seriesIndex})=>v==null?'--':seriesIndex? v.toFixed(1)+'%':fmtN(v)}},
+  legend:{position:'top',fontSize:'11px',labels:{colors:'#cfd8f5'}}
+}); chEvol.render();
+
+// Função × Gravidade (barras empilhadas)
+const chFunc = new ApexCharts(document.querySelector('#chFunc'),{...base(270),
+  chart:{...base(270).chart,type:'bar',stacked:true,
+    events:{dataPointSelection:(e,ctx,{seriesIndex,dataPointIndex})=>{const f=FUNCS[dataPointIndex],v=String(seriesIndex);
+      (F.func===f&&F.sev===v)?setFilters({func:'all',sev:'all'}):setFilters({func:f,sev:v})}}},
+  series:[],colors:[C.green,C.orange,C.red,'#b31d6b'],
+  plotOptions:{bar:{horizontal:true,barHeight:'55%',borderRadius:2,dataLabels:{total:{enabled:true,offsetX:6,style:{color:'#e6ecff',fontSize:'11px',fontWeight:700}}}}},
+  xaxis:{categories:FUNCS}, legend:{position:'top',fontSize:'11px',labels:{colors:'#cfd8f5'}},
+  states:{active:{filter:{type:'darken',value:.4}}}
+}); chFunc.render();
+
+// Treemap turno
+const TREE_COLORS=[C.blue,C.indigo,C.pink,C.purple];
+const chTurno = new ApexCharts(document.querySelector('#chTurno'),{...base(270),
+  chart:{...base(270).chart,type:'treemap',
+    events:{dataPointSelection:(e,ctx,{dataPointIndex,w})=>{const s=w.config.series[0].data[dataPointIndex].x;setFilter('shift',F.shift===s?'all':s)}}},
+  series:[{data:[]}],legend:{show:false},colors:[C.blue,C.indigo,C.pink,C.purple],
+  plotOptions:{treemap:{distributed:true,enableShades:false}},
+  dataLabels:{enabled:true,style:{fontSize:'12px',fontWeight:700},formatter:(t,o)=>[t,fmtN(o.value)],offsetY:-4}
+}); chTurno.render();
+
+// Heatmap marca × pilar
+const chHeat = new ApexCharts(document.querySelector('#chHeat'),{...base(270),
+  chart:{...base(270).chart,type:'heatmap',
+    events:{dataPointSelection:(e,ctx,{seriesIndex,dataPointIndex})=>{const b=String(BRANDS.length-1-seriesIndex),p=String(dataPointIndex);
+      (F.brand===b&&F.pillar===p)?setFilters({brand:'all',pillar:'all'}):setFilters({brand:b,pillar:p})}}},
+  series:[],
+  dataLabels:{enabled:true,style:{fontSize:'10px',colors:['#fff']},formatter:v=>v==null||v<0?'':v.toFixed(0)},
+  plotOptions:{heatmap:{radius:3,enableShades:false,colorScale:{ranges:[
+    {from:-2,to:-0.5,color:'#16213f',name:'Fora do filtro'},
+    {from:0,to:84.99,color:'#c2364a',name:'< 85'},{from:85,to:89.99,color:'#d9822b',name:'85–90'},
+    {from:90,to:94.99,color:'#2f7df6',name:'90–95'},{from:95,to:100,color:'#1fa971',name:'≥ 95'}]}}},
+  stroke:{width:2,colors:['#0c1326']},
+  xaxis:{labels:{rotate:-40,style:{fontSize:'10px'},formatter:v=>v&&v.length>11?v.slice(0,10)+'…':v}},
+  legend:{position:'bottom',fontSize:'10px',labels:{colors:'#cfd8f5'}},
+  tooltip:{theme:'dark',y:{formatter:v=>v==null||v<0?'fora do filtro':v.toFixed(1)}}
+}); chHeat.render();
+
+/* =====================================================================
+   4) RENDER — recalcula tudo a partir do estado de filtros
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+
+function render(){
+  const rows = filtered(), s = agg(rows);
+  // Período anterior (mesma janela imediatamente antes)
+  const len = F.to-F.from+1, pFrom=F.from-len, pTo=F.from-1;
+  const p = pFrom>=0 ? agg(filtered(pFrom,pTo)) : null;
+
+  // --- KPIs
+  animate($('kConv'),s.conv,fmtK);   $('kHum').textContent=fmtK(s.hum);   delta($('kConvPA'),s.conv,p?.conv);
+  animate($('kCvr'),s.cvr,v=>fmtP(v));$('kAval').textContent=fmtK(s.aval); delta($('kCvrPA'),s.cvr,p?.cvr,true);
+  animate($('kCsat'),s.csat,v=>fmtP(v));$('kFb').textContent=fmtN(s.fb);  delta($('kCsatPA'),s.csat,p?.csat,true);
+  animate($('kInf'),s.inf,fmtK);     $('kGrave').textContent=fmtN(s.sev[2]); $('kMGrave').textContent=fmtN(s.sev[3]);
+  animate($('kScore'),s.score,v=>v.toFixed(1)); delta($('kScorePA'),s.score,p?.score,true);
+  animate($('kRev'),s.rev,fmtN);     $('kRevPct').textContent=s.aud?fmtP(s.rev/s.aud*100):'--'; $('kRevOk').textContent=fmtN(s.revOk);
+  animate($('kAud'),s.aud,fmtK);     $('kCov').textContent=fmtP(s.cov);   delta($('kAudPA'),s.aud,p?.aud);
+  document.querySelectorAll('.kpi').forEach(k=>{k.classList.remove('flash');void k.offsetWidth;k.classList.add('flash')});
+
+  // --- Por analista (base de tabela + dispersão). Ignora filtro de analista para manter contexto, mas destaca seleção.
+  const ctxRows = DATA.filter(r=>r.m>=F.from&&r.m<=F.to&&(F.brand==='all'||r.b==F.brand)&&(F.channel==='all'||r.c==F.channel)&&(F.func==='all'||r.fn===F.func)&&(F.shift==='all'||r.sh===F.shift));
+  const byA = groupBy(ctxRows,'a');
+  const list = Object.entries(byA).map(([a,rs])=>{const g=agg(rs);return{id:+a,name:ANALYSTS[a][0],cov:g.cov,csat:g.csat,inf:g.inf,score:g.score,conv:g.conv}});
+  renderTable(list,agg(ctxRows));
+
+  const avg = agg(ctxRows).csat||0;
+  const valid = list.filter(x=>x.csat!=null);
+  // Rotula apenas destaques (top volume, menor/maior CSAT e o selecionado) → sem sobreposição
+  const hl = new Set([...[...valid].sort((a,b)=>b.conv-a.conv).slice(0,2),...[...valid].sort((a,b)=>a.csat-b.csat).slice(0,2),
+                      ...[...valid].sort((a,b)=>b.csat-a.csat).slice(0,1)].map(x=>x.id));
+  if(F.analyst!=='all') hl.add(+F.analyst);
+  const pts = valid.map(x=>({x:x.conv,y:x.csat,name:x.name,short:hl.has(x.id)?x.name.split(' ')[0]:'',id:x.id}));
+  const xMax = Math.max(10,...pts.map(p=>p.x))*1.12;
+  chScatter.updateOptions({
+    xaxis:{type:'numeric',min:0,max:xMax,tickAmount:4,labels:{formatter:v=>fmtK(v)},title:{text:'Volume de conversas'}},
+    series:[{name:'≥ média',data:pts.filter(p=>p.y>=avg)},{name:'< média',data:pts.filter(p=>p.y<avg)}],
+    annotations:{yaxis:[{y:avg,borderColor:'#5aa9ff',strokeDashArray:6,label:{text:'Média '+avg.toFixed(1)+'%',position:'left',textAnchor:'start',style:{background:'#13224a',color:'#cfe3ff',fontSize:'10px'}}}]},
+    markers:{size:8,strokeWidth:2,strokeColors:pts.map(()=>'transparent')}
+  });
+
+  // --- Ranking infrações
+  const sp = agg(rows,'pillar');
+  const cats = PILLARS.map((n,i)=>({n,i,v:sp.cat[i]})).sort((a,b)=>b.v-a.v);
+  chRankInf.updateOptions({xaxis:{categories:cats.map(c=>c.n)}});
+  chRankInf.updateSeries([{name:'Infrações',data:cats.map(c=>({x:c.n,y:c.v,fillColor:dim(C.blue,F.pillar==='all'||F.pillar==c.i)}))}]);
+
+  // --- Evolução (sempre jan–set; meses fora do período ficam vazios)
+  const byM = groupBy(filteredEx('period'),'m');
+  const evAll = MONTHS.map((_,m)=>byM[m]?agg(byM[m]):null);
+  const inR = m=>m>=F.from&&m<=F.to;
+  const ev = evAll.map((g,m)=>inR(m)?g:null);          // para insights: só meses do período
+  chEvol.updateSeries([
+    {name:'Conversas',type:'column',data:evAll.map(g=>g?g.conv:null)},
+    {name:'CSAT %',type:'line',data:evAll.map(g=>g&&g.csat!=null?+g.csat.toFixed(1):null)},
+    {name:'Cobertura auditoria',type:'line',data:evAll.map(g=>g&&g.cov!=null?+g.cov.toFixed(1):null)}]);
+
+  // --- Função × gravidade
+  const byF = groupBy(filteredEx('func'),'fn'), SEVC=[C.green,C.orange,C.red,'#8e1d5b'];
+  const fAgg = FUNCS.map(f=>byF[f]?agg(byF[f],'sev'):null);
+  chFunc.updateSeries(SEV.map((sv,i)=>({name:sv,data:FUNCS.map((f,j)=>({x:f,y:fAgg[j]?fAgg[j].sev[i]:0,
+    fillColor:dim(SEVC[i],(F.func==='all'||F.func===f)&&(F.sev==='all'||F.sev==i))}))})));
+
+  // --- Treemap turno
+  const byS = groupBy(filteredEx('shift'),'sh'), TC=TREE_COLORS;
+  chTurno.updateSeries([{data:SHIFTS.map((t,i)=>({x:t,y:byS[t]?agg(byS[t]).inf:0,fillColor:dim(TC[i],F.shift==='all'||F.shift===t)})).filter(d=>d.y>0)}]);
+
+  // --- Heatmap
+  const byB = groupBy(rows,'b'), byBh = groupBy(filteredEx('brand'),'b');
+  chHeat.updateSeries(BRANDS.map((b,bi)=>{const g=byBh[bi]?agg(byBh[bi],'pillar'):null;
+    return{name:b.n.replace('Brand ',''),data:PILLARS.map((pn,pi)=>{const on=(F.brand==='all'||F.brand==bi)&&(F.pillar==='all'||F.pillar==pi);
+      return {x:pn,y:on&&g&&g.aud?+Math.max(60,100-g.cat[pi]/g.aud*100*2.2).toFixed(1):-1}})}}).reverse());   // -1 = célula fora do filtro (esmaecida)
+
+  document.body.classList.toggle('no-data', !s.conv);
+  renderInsights(s, list, ev, byB);
+  renderChips();
+  $('lastUpdate').textContent='Atualizado '+new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function renderTable(list,tot){
+  list.sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(typeof x==='string')return sortAsc?x.localeCompare(y):y.localeCompare(x);return sortAsc?(x??-1)-(y??-1):(y??-1)-(x??-1)});
+  $('rkBody').innerHTML = list.map(r=>`
+    <tr class="${F.analyst==r.id?'sel':''}" data-id="${r.id}" tabindex="0">
+      <td style="color:#e6ecff;font-weight:600">${r.name}</td>
+      <td>${fmtP(r.cov,0)}</td>
+      <td style="color:${r.csat>=75?'#3ddc97':r.csat<65?'#ff7a88':'#e6ecff'}">${fmtP(r.csat,0)}</td>
+      <td>${fmtN(r.inf)}</td>
+      <td>${r.score==null?'<span style="color:#5b6789">--</span>':`<div class="scorebar"><i style="width:${Math.max(0,(r.score-70)/30*100)}%"></i><span>${r.score.toFixed(2)}</span></div>`}</td>
+    </tr>`).join('');
+  $('rkFoot').innerHTML = `<td>Total</td><td>${fmtP(tot.cov,0)}</td><td>${fmtP(tot.csat,0)}</td><td>${fmtN(tot.inf)}</td><td style="text-align:right">${tot.score?.toFixed(2)??'--'}</td>`;
+  document.querySelectorAll('.rk th').forEach(th=>{th.classList.toggle('sorted',th.dataset.k===sortKey);th.classList.toggle('asc',th.dataset.k===sortKey&&sortAsc)});
+}
+
+/* =====================================================================
+   5) FILTROS — UI, cross-filter e chips
+   ===================================================================== */
+const SEL={fBrand:['brand',BRANDS.map((b,i)=>[i,b.n])],fChannel:['channel',CHANNELS.map((c,i)=>[i,c.n])],
+  fAnalyst:['analyst',ANALYSTS.map((a,i)=>[i,a[0]]).sort((a,b)=>a[1].localeCompare(b[1]))],
+  fFunc:['func',FUNCS.map(f=>[f,f])],fShift:['shift',SHIFTS.map(s=>[s,s])],
+  fPillar:['pillar',PILLARS.map((p,i)=>[i,p])],fSev:['sev',SEV.map((v,i)=>[i,v])]};
+const LABEL={brand:'Marca',channel:'Canal',analyst:'Analista',func:'Função',shift:'Turno',pillar:'Pilar',sev:'Gravidade'};
+
+Object.entries(SEL).forEach(([id,[key,opts]])=>{
+  const el=$(id); el.innerHTML='<option value="all">Todos</option>'+opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+  el.addEventListener('change',()=>setFilter(key,el.value));
+});
+['fFrom','fTo'].forEach((id,ix)=>{
+  const el=$(id); el.innerHTML=MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join(''); el.value=ix?8:0;
+  el.addEventListener('change',()=>{let a=+$('fFrom').value,b=+$('fTo').value;if(a>b){if(ix)a=b;else b=a}F.from=a;F.to=b;$('fFrom').value=a;$('fTo').value=b;render()});
+});
+
+function setFilters(obj){
+  Object.entries(obj).forEach(([key,val])=>{F[key]=String(val);
+    const id=Object.keys(SEL).find(k=>SEL[k][0]===key); if(id){$(id).value=val;$(id).classList.toggle('active',val!=='all')}});
+  render();
+}
+const setFilter=(key,val)=>setFilters({[key]:val});
+function renderChips(){
+  const act=Object.keys(LABEL).filter(k=>F[k]!=='all');
+  if(F.from!==0||F.to!==8) act.unshift('period');
+  $('chips').innerHTML = act.length? act.map(k=>{
+    const txt = k==='period'? `${MONTHS[F.from]} – ${MONTHS[F.to]}` :
+      `${LABEL[k]}: ${SEL[Object.keys(SEL).find(i=>SEL[i][0]===k)][1].find(o=>o[0]==F[k])[1]}`;
+    return `<span class="chip">${txt}<button aria-label="Remover filtro" data-k="${k}">✕</button></span>`}).join('')
+    : 'Nenhum filtro ativo';
+}
+$('chips').addEventListener('click',e=>{const k=e.target.dataset.k;if(!k)return;
+  if(k==='period'){F.from=0;F.to=8;$('fFrom').value=0;$('fTo').value=8;render()}else setFilter(k,'all')});
+
+// Tabela: ordenar e cross-filter
+document.querySelectorAll('.rk th').forEach(th=>{
+  const go=()=>{const k=th.dataset.k;if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=k==='name'}render()};
+  th.addEventListener('click',go); th.addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+});
+$('rkBody').addEventListener('click',e=>{const tr=e.target.closest('tr');if(!tr)return;const id=+tr.dataset.id;setFilter('analyst',F.analyst==id?'all':String(id))});
+$('rkBody').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.closest('tr')?.click()});
+
+$('btnReset').addEventListener('click',()=>{Object.assign(F,{from:0,to:8,brand:'all',channel:'all',analyst:'all',func:'all',shift:'all',pillar:'all',sev:'all'});
+  $('fFrom').value=0;$('fTo').value=8;Object.keys(SEL).forEach(id=>{$(id).value='all';$(id).classList.remove('active')});render()});
+$('btnToggle').addEventListener('click',e=>{const f=$('filters');f.classList.toggle('closed');e.currentTarget.setAttribute('aria-expanded',!f.classList.contains('closed'))});
+
+/* =====================================================================
+   6) INSIGHTS AUTOMÁTICOS — leitura analítica do recorte atual
+   ===================================================================== */
+const ICO={
+  pie:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>',
+  alert:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18h0"/></svg>',
+  up:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+  grid:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>'};
+function card(cls,ico,t,sub){return `<div class="panel ins ${cls}"><div class="ic">${ICO[ico]}</div><div><div class="t">${t}</div><div class="s">${sub}</div></div></div>`}
+
+function renderInsights(s,list,ev,byB){
+  const el=$('insights');
+  if(!s.conv){el.innerHTML=card('','alert','<b>Sem dados</b> para os filtros selecionados.','Ajuste o período ou remova um filtro.');return}
+  const out=[];
+  // 1) Concentração de infrações (Pareto)
+  if(s.inf){const i=s.cat.indexOf(Math.max(...s.cat)), top3=[...s.cat].sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0);
+    out.push(card('','pie',`<b>${PILLARS[i]}</b> concentra <b>${fmtP(s.cat[i]/s.inf*100,0)}</b> das infrações.`,`Os 3 principais pilares somam ${fmtP(top3/s.inf*100,0)}: priorizar formação aqui tem maior retorno.`));}
+  // 2) Analista em risco (menor score com amostra mínima)
+  const elig=list.filter(x=>x.score!=null&&x.inf>=5);
+  if(elig.length>1){const w=elig.reduce((a,b)=>a.score<b.score?a:b);
+    out.push(card(w.score<90?'warn':'', 'alert',`<b>${w.name}</b> tem o menor score: <b>${w.score.toFixed(1)}</b>.`,
+      w.score<90?`${(90-w.score).toFixed(1)} pts abaixo da meta. Sugestão: plano de acompanhamento individual.`:'Ainda acima da meta de 90.'));}
+  else if(elig.length===1){const a=elig[0];out.push(card(a.score>=90?'good':'warn','alert',`<b>${a.name}</b>: score <b>${a.score.toFixed(1)}</b>.`,a.score>=90?'Dentro da meta de 90.':'Abaixo da meta de 90.'))}
+  // 3) Tendência de CSAT (1º vs último mês do recorte)
+  const m=ev.map((g,i)=>({g,i})).filter(x=>x.g&&x.g.csat!=null);
+  if(m.length>=2){const a=m[0],b=m[m.length-1],d=b.g.csat-a.g.csat;
+    out.push(card(d>=0?'good':'warn','up',`CSAT ${d>=0?'subiu':'caiu'} <b>${Math.abs(d).toFixed(1)} p.p.</b> entre ${MONTHS[a.i]} e ${MONTHS[b.i]}.`,
+      `De ${fmtP(a.g.csat)} para ${fmtP(b.g.csat)}, com volume ${b.g.conv>=a.g.conv?'maior':'menor'} no fim do período.`));}
+  else out.push(card('','up','Selecione <b>2 meses ou mais</b> para ver a tendência de CSAT.','A tendência compara o primeiro e o último mês do período.'));
+  // 4) Pior célula marca × pilar
+  let worst=null;Object.entries(byB).forEach(([bi,rs])=>{const g=agg(rs);if(!g.aud)return;
+    g.cat.forEach((v,pi)=>{const sc=Math.max(60,100-v/g.aud*100*2.2);if(!worst||sc<worst.sc)worst={sc,b:BRANDS[bi].n,p:PILLARS[pi]}})});
+  if(worst) out.push(card(worst.sc<85?'warn':'','grid',`Ponto mais crítico: <b>${worst.p}</b> na <b>${worst.b}</b>.`,`Score do pilar ${worst.sc.toFixed(1)} (meta 90). Ver mapa de calor.`));
+  el.innerHTML=out.join('');
+}
+
+render();
+</script>
+</body>
+</html>
