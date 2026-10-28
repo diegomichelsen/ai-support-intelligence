@@ -1,0 +1,13 @@
+# API
+fastapi
+uvicorn[standard]
+
+# Banco de dados (PostgreSQL / Supabase)
+psycopg[binary]
+
+# Leitura do arquivo .env
+python-dotenv
+
+# Testes (TestClient do FastAPI depende do httpx)
+pytest
+httpx
