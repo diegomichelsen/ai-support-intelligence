@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .            # Raiz do projeto: o Dockerfile enxerga src/ e requirements.txt
+      dockerfile: Dockerfile
+    container_name: ai-support-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                # Variáveis privadas (veja .env.example)
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:stable
+    container_name: ai-support-n8n
+    ports:
+      - "127.0.0.1:5678:5678"   # Exposto apenas na sua máquina
+    environment:
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
