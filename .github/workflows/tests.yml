@@ -1,0 +1,28 @@
+# Roda os testes automaticamente a cada push e pull request.
+# Equivale a um workflow do n8n com gatilho "quando o código mudar".
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar testes
+        run: pytest -v
