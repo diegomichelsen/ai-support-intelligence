@@ -1,5 +1,22 @@
 # AI Support Intelligence
 
+[![Testes](https://github.com/diegomichelsen/ai-support-intelligence/actions/workflows/tests.yml/badge.svg)](https://github.com/diegomichelsen/ai-support-intelligence/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+
+## Quickstart
+
+```bash
+cp .env.example .env                        # preencha DATABASE_URL
+pip install -r requirements.txt
+python scripts/generate_synthetic_data.py   # gera 50 conversas fictícias
+python scripts/import_conversations.py      # carrega no PostgreSQL
+docker compose up --build                   # API em http://localhost:8000/docs
+pytest -v                                   # roda os testes
+```
+
+
 ### AI-Powered Quality Assurance, Customer Experience & Cross-Functional Operational Intelligence
 
 An enterprise-oriented platform designed to automate the Quality Assurance (QA) lifecycle, evaluate customer support interactions using AI, support evidence-based decisions, and transform conversation data into actionable intelligence across the entire business.
